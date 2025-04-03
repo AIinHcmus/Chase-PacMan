@@ -382,6 +382,20 @@ class PacmanGame:
             
             # Level 2: Pink Ghost using DFS
             elif self.current_level == 2 and 'pink' in ACTIVE_GHOSTS[self.current_level]:
+                # If we don't have a path or reached the end of the current path, calculate a new one
+                if not self.current_path or len(self.current_path) <= 1:
+                    # Create a DFS algorithm instance
+                    dfs = DFSAlgorithm(MAZE_LAYOUT)
+
+                    # Get the current positions of the ghost and Pac-Man
+                    ghost_pos = tuple(self.ghost_positions['pink'])
+                    pacman_pos = tuple(self.pacman_pos)
+
+                    # Find a path from the ghost to Pac-Man using DFS
+                    self.current_path, stats = dfs.search(ghost_pos, pacman_pos)
+
+                    # Update the stats display
+                    self.stats = stats
                 # Placeholder for DFS implementation
                 if self.current_path and len(self.current_path) > 1:
                     self.ghost_positions['pink'] = [self.current_path[1][0], self.current_path[1][1]]
@@ -389,6 +403,20 @@ class PacmanGame:
             
             # Level 3: Orange Ghost using UCS
             elif self.current_level == 3 and 'orange' in ACTIVE_GHOSTS[self.current_level]:
+                # If no path exists or we've reached the end of the current path, calculate a new one
+                if not self.current_path or len(self.current_path) <= 1:
+                    # Initialize UCS algorithm
+                    ucs = UCSAlgorithm(MAZE_LAYOUT)
+
+                    # Get current positions (convert to tuples for consistency)
+                    ghost_pos = tuple(self.ghost_positions['orange'])
+                    pacman_pos = tuple(self.pacman_pos)
+
+                    # Calculate shortest path using UCS
+                    self.current_path, stats = ucs.search(ghost_pos, pacman_pos)
+
+                    # Update performance stats for display
+                    self.stats = stats
                 # Placeholder for UCS implementation
                 if self.current_path and len(self.current_path) > 1:
                     self.ghost_positions['orange'] = [self.current_path[1][0], self.current_path[1][1]]
@@ -396,6 +424,19 @@ class PacmanGame:
             
             # Level 4: Red Ghost using A*
             elif self.current_level == 4 and 'red' in ACTIVE_GHOSTS[self.current_level]:
+                if not self.current_path or len(self.current_path) <= 1:
+                    # Initialize A* algorithm instance
+                    astar = AStarAlgorithm(MAZE_LAYOUT)
+
+                    # Get current positions
+                    ghost_pos = tuple(self.ghost_positions['red'])
+                    pacman_pos = tuple(self.pacman_pos)
+
+                    # Calculate optimal path using A*
+                    self.current_path, stats = astar.search(ghost_pos, pacman_pos)
+
+                    # Update performance metrics
+                    self.stats = stats
                 # Placeholder for A* implementation
                 if self.current_path and len(self.current_path) > 1:
                     self.ghost_positions['red'] = [self.current_path[1][0], self.current_path[1][1]]
