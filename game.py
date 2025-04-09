@@ -64,6 +64,21 @@ class PacmanGame:
      
         # Debug mode
         self.debug_mode = False
+
+        # Ghost algorithms and paths for level 5
+        self.ghost_algorithms = {
+            'blue': BFSAlgorithm(MAZE_LAYOUT),
+            'pink': DFSAlgorithm(MAZE_LAYOUT),
+            'orange': UCSAlgorithm(MAZE_LAYOUT),
+            'red': AStarAlgorithm(MAZE_LAYOUT)
+        }
+
+        self.ghost_paths = {
+            'blue': [],
+            'pink': [],
+            'orange': [],
+            'red': []
+        }
     
     def reset_game(self):
         """Reset the game state."""
@@ -90,6 +105,13 @@ class PacmanGame:
         
         # Reset path
         self.current_path = []
+
+        self.ghost_paths = {
+            'blue': [],
+            'pink': [],
+            'orange': [],
+            'red': []
+        }
         self.show_path = False
         
         # Reset level completion
@@ -198,23 +220,34 @@ class PacmanGame:
                 elif cell == 2:  # Food
                     pygame.draw.circle(self.screen, WHITE, (screen_x + CELL_SIZE // 2, screen_y + CELL_SIZE // 2), 3)
     
-    def draw_path(self, path, color):
+    def draw_path(self, path, color, ghost_type=None):
         """Draw a path on the maze."""
         if not path or len(path) < 2:
             return
         
+        # Calculate offset based on ghost type
+        offset = 0
+        if ghost_type == 'blue':
+            offset = -2
+        elif ghost_type == 'pink':
+            offset = 2
+        elif ghost_type == 'orange':
+            offset = -4
+        elif ghost_type == 'red':
+            offset = 4
+
         for i in range(len(path) - 1):
-            start_x = self.maze_offset_x + path[i][0] * CELL_SIZE + CELL_SIZE // 2
-            start_y = self.maze_offset_y + path[i][1] * CELL_SIZE + CELL_SIZE // 2
-            end_x = self.maze_offset_x + path[i+1][0] * CELL_SIZE + CELL_SIZE // 2
-            end_y = self.maze_offset_y + path[i+1][1] * CELL_SIZE + CELL_SIZE // 2
+            start_x = self.maze_offset_x + path[i][0] * CELL_SIZE + CELL_SIZE // 2 + offset
+            start_y = self.maze_offset_y + path[i][1] * CELL_SIZE + CELL_SIZE // 2 + offset
+            end_x = self.maze_offset_x + path[i+1][0] * CELL_SIZE + CELL_SIZE // 2 + offset
+            end_y = self.maze_offset_y + path[i+1][1] * CELL_SIZE + CELL_SIZE // 2 + offset
             
             pygame.draw.line(self.screen, color, (start_x, start_y), (end_x, end_y), 2)
             pygame.draw.circle(self.screen, color, (start_x, start_y), 3)
         
         # Draw the last point
-        last_x = self.maze_offset_x + path[-1][0] * CELL_SIZE + CELL_SIZE // 2
-        last_y = self.maze_offset_y + path[-1][1] * CELL_SIZE + CELL_SIZE // 2
+        last_x = self.maze_offset_x + path[-1][0] * CELL_SIZE + CELL_SIZE // 2 + offset
+        last_y = self.maze_offset_y + path[-1][1] * CELL_SIZE + CELL_SIZE // 2 + offset
         pygame.draw.circle(self.screen, color, (last_x, last_y), 3)
     
     def draw_stats(self):
@@ -259,9 +292,14 @@ class PacmanGame:
                 ghost_color = ORANGE
             elif self.current_level == 4:
                 ghost_color = RED
-            
+
             if ghost_color:
                 self.draw_path(self.current_path, ghost_color)
+        # Draw paths for all active ghosts in Level 5
+        elif self.current_level == 5 and self.show_path:
+            for ghost_color in ACTIVE_GHOSTS[self.current_level]:
+                color = globals()[ghost_color.upper()]
+                self.draw_path(self.ghost_paths[ghost_color], color, ghost_color)
         
         # Draw Pac-Man
         if self.pacman_pos and (self.current_level == 6 or self.pacman_pos):
@@ -444,10 +482,35 @@ class PacmanGame:
             
             # Level 5: All ghosts using their respective algorithms
             elif self.current_level == 5:
-                # This will be implemented by the user's team
-                # Each ghost would follow its own path based on its search algorithm
-                pass
-    
+                # Create a temporary dictionary to store new positions
+                new_positions = {}
+
+                for ghost_color in ACTIVE_GHOSTS[self.current_level]:
+                    # Calculate the new position as usual
+                    if not self.ghost_paths[ghost_color] or len(self.ghost_paths[ghost_color]) <= 1:
+                        ghost_pos = tuple(self.ghost_positions[ghost_color])
+                        pacman_pos = tuple(self.pacman_pos)
+                        self.ghost_paths[ghost_color], stats = self.ghost_algorithms[ghost_color].search(ghost_pos, pacman_pos)
+                        if ghost_color == 'blue':
+                            self.stats = stats
+
+                    if self.ghost_paths[ghost_color] and len(self.ghost_paths[ghost_color]) > 1:
+                        new_pos = list(self.ghost_paths[ghost_color][1])
+                        new_positions[ghost_color] = new_pos
+
+                # Check for collisions between ghosts
+                positions = list(new_positions.values())
+                if len(positions) == len(set(tuple(pos) for pos in positions)):  # No overlapping positions
+                    for ghost_color, new_pos in new_positions.items():
+                        self.ghost_positions[ghost_color] = new_pos
+                        self.ghost_paths[ghost_color].pop(0)
+                else:
+                    # If there's a conflict, only move the first ghost (or handle differently)
+                    for ghost_color, new_pos in new_positions.items():
+                        if list(new_pos) not in positions[:list(new_positions.keys()).index(ghost_color)]:
+                            self.ghost_positions[ghost_color] = new_pos
+                            self.ghost_paths[ghost_color].pop(0)
+
     def check_collisions(self):
         """Check for collisions between Pac-Man and ghosts."""
         for ghost_color in ACTIVE_GHOSTS[self.current_level]:
