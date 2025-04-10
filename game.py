@@ -2,6 +2,7 @@
 Main game class for the Pac-Man Search Algorithms project.
 """
 import pygame
+from pygame import K_RIGHT, K_DOWN, K_LEFT, K_UP, QUIT, KEYDOWN, K_q, K_SPACE, K_ESCAPE, K_RETURN, K_p, K_s, K_d, SRCALPHA
 import sys
 import math
 from pygame.locals import *
@@ -31,13 +32,16 @@ class PacmanGame:
         # Calculate maze offset
         self.maze_offset_x, self.maze_offset_y = calculate_maze_offset()
         
+        # Store a copy of the original maze layout
+        self.original_maze_layout = [row[:] for row in MAZE_LAYOUT]
+        
         # Initialize positions
         self.reset_game()
         
         # Pacman animation
         self.pacman_direction = RIGHT
         self.pacman_animation_time = 0
-        self.pacman_animation_speed = 0.3
+        self.pacman_animation_speed = 5.25
         
         # Stats display
         self.show_stats = False
@@ -56,7 +60,7 @@ class PacmanGame:
         self.ghost_move_delay = 0.3  # seconds between moves
         # Pacman movement timers
         self.pacman_move_timer = 0
-        self.pacman_move_delay = 0.1  # seconds between moves
+        self.pacman_move_delay = 0.2  # seconds between moves
 
         # Level completion
         self.level_complete = False
@@ -82,6 +86,10 @@ class PacmanGame:
     
     def reset_game(self):
         """Reset the game state."""
+        # Restore the maze layout to its original state
+        global MAZE_LAYOUT
+        MAZE_LAYOUT = [row[:] for row in self.original_maze_layout]  # Deep copy to restore food
+        
         # Find initial positions
         self.pacman_pos, self.ghost_positions = find_initial_positions()
         
@@ -165,26 +173,31 @@ class PacmanGame:
     
     def draw_pacman(self, x, y):
         """Draw Pac-Man at the specified position."""
-        # Calculate screen position
         screen_x = self.maze_offset_x + x * CELL_SIZE + CELL_SIZE // 2
         screen_y = self.maze_offset_y + y * CELL_SIZE + CELL_SIZE // 2
-        
-        # Draw Pac-Man with animation
-        angle = self.pacman_direction * 90
-        start_angle = angle + 45 - (45 * abs(math.sin(self.pacman_animation_time)))
-        end_angle = angle - 45 + (45 * abs(math.sin(self.pacman_animation_time)))
-        
-        pygame.draw.circle(self.screen, YELLOW, (screen_x, screen_y), CELL_SIZE // 2 - 2)
-        
-        # Draw mouth
-        pygame.draw.polygon(self.screen, BLACK, [
-            (screen_x, screen_y),
-            (screen_x + (CELL_SIZE // 2 - 2) * math.cos(math.radians(start_angle)), 
-             screen_y - (CELL_SIZE // 2 - 2) * math.sin(math.radians(start_angle))),
-            (screen_x + (CELL_SIZE // 2 - 2) * math.cos(math.radians(end_angle)), 
-             screen_y - (CELL_SIZE // 2 - 2) * math.sin(math.radians(end_angle)))
-        ])
-    
+        center = (screen_x, screen_y)
+
+        radius = CELL_SIZE // 2 - 2
+
+        angle_deg = self.pacman_direction * 90
+        mouth_angle_deg = 45 * abs(math.sin(self.pacman_animation_time))
+
+        start_angle = math.radians(angle_deg - mouth_angle_deg)
+        end_angle = math.radians(angle_deg + mouth_angle_deg)
+
+        pygame.draw.circle(self.screen, YELLOW, center, radius)
+
+        num_points = 30
+        points = [center]
+        for i in range(num_points + 1):
+            angle = start_angle + (end_angle - start_angle) * (i / num_points)
+            x_point = screen_x + radius * math.cos(angle)
+            y_point = screen_y + radius * math.sin(angle)
+            points.append((x_point, y_point))
+
+        pygame.draw.polygon(self.screen, BLACK, points)
+
+
     def draw_ghost(self, x, y, color):
         """Draw a ghost at the specified position with the given color."""
         # Calculate screen position
@@ -357,34 +370,52 @@ class PacmanGame:
         """Update Pac-Man's position and animation."""
         # Update animation
         self.pacman_animation_time += self.pacman_animation_speed * dt
-        
+    
         # In level 6, allow user control
         if self.current_level == 6:
             self.pacman_move_timer += dt
-            
+        
             if self.pacman_move_timer >= self.pacman_move_delay:
                 self.pacman_move_timer = 0
-                
+            
                 keys = pygame.key.get_pressed()
                 new_pos = self.pacman_pos.copy()
-                
+                new_direction = self.pacman_direction  # Keep track of new direction
+            
+                # Prioritize the last pressed key by checking all keys
                 if keys[K_RIGHT]:
-                    self.pacman_direction = RIGHT
+                    new_direction = RIGHT
                     new_pos[0] += 1
-                elif keys[K_DOWN]:
-                    self.pacman_direction = DOWN
+                if keys[K_DOWN]:
+                    new_direction = DOWN
                     new_pos[1] += 1
-                elif keys[K_LEFT]:
-                    self.pacman_direction = LEFT
+                if keys[K_LEFT]:
+                    new_direction = LEFT
                     new_pos[0] -= 1
-                elif keys[K_UP]:
-                    self.pacman_direction = UP
+                if keys[K_UP]:
+                    new_direction = UP
                     new_pos[1] -= 1
-                
+            
                 # Check if the new position is valid (not a wall)
                 if is_valid_move(new_pos[0], new_pos[1]):
                     self.pacman_pos[0] = new_pos[0]
                     self.pacman_pos[1] = new_pos[1]
+                    self.pacman_direction = new_direction  # Update direction only if move is valid
+                
+                    # Check for food at the new position
+                    if MAZE_LAYOUT[new_pos[1]][new_pos[0]] == 2:  # Food cell
+                        MAZE_LAYOUT[new_pos[1]][new_pos[0]] = 0  # Remove food
+                        # Check if all food is eaten
+                        if not self.has_food_left():
+                            self.level_complete = True
+                            self.level_complete_timer = 0
+
+    def has_food_left(self):
+        """Check if there is any food left in the maze."""
+        for row in MAZE_LAYOUT:
+            if 2 in row:  # Food cell
+                return True
+        return False
     
     def update_ghosts(self, dt):
         """Update ghost positions based on their search algorithms."""
@@ -510,6 +541,47 @@ class PacmanGame:
                         if list(new_pos) not in positions[:list(new_positions.keys()).index(ghost_color)]:
                             self.ghost_positions[ghost_color] = new_pos
                             self.ghost_paths[ghost_color].pop(0)
+            # Level 6: User-Controlled Pac-Man with ghosts actively chasing
+            elif self.current_level == 6:
+                new_positions = {}
+                occupied_positions = set()
+                pacman_pos_tuple = tuple(self.pacman_pos)  # Store Pac-Man's position for comparison
+
+                for ghost_color in ACTIVE_GHOSTS[self.current_level]:
+                    # Recalculate path only if necessary
+                    if not self.ghost_paths[ghost_color] or len(self.ghost_paths[ghost_color]) <= 1:
+                        ghost_pos = tuple(self.ghost_positions[ghost_color])
+                        pacman_pos = tuple(self.pacman_pos)
+                        self.ghost_paths[ghost_color], stats = self.ghost_algorithms[ghost_color].search(ghost_pos, pacman_pos)
+                        if ghost_color == 'blue':  # Update stats using blue ghost as reference
+                            self.stats = stats
+
+                    # Move the ghost along the path
+                    if self.ghost_paths[ghost_color] and len(self.ghost_paths[ghost_color]) > 1:
+                        new_pos = list(self.ghost_paths[ghost_color][1])
+                        new_pos_tuple = tuple(new_pos)
+
+                        # Avoid collisions with other ghosts
+                        if new_pos_tuple not in occupied_positions:
+                            # Check for collision with Pac-Man
+                            if new_pos_tuple == pacman_pos_tuple:
+                                self.reset_game()  # Trigger game over immediately
+                                return  # Stop updating ghosts to avoid further movement
+
+                            new_positions[ghost_color] = new_pos
+                            occupied_positions.add(new_pos_tuple)
+                        else:
+                            # If the position is occupied, try to find a new path in the next update
+                            self.ghost_paths[ghost_color] = []  # Clear the current path to force recalculation
+                            continue
+                    else:
+                        # If no path is found, the ghost stays in place (or you can add random movement here)
+                        continue
+
+                # Update ghost positions
+                for ghost_color, new_pos in new_positions.items():
+                    self.ghost_positions[ghost_color] = new_pos
+                    self.ghost_paths[ghost_color].pop(0)
 
     def check_collisions(self):
         """Check for collisions between Pac-Man and ghosts."""
