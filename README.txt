@@ -23,7 +23,7 @@ This project implements a Pac-Man game where ghosts use different search algorit
 
 2. Run the game:
    ```
-   python3 main.py
+   python main.py
    ```
 
 ## Game Controls
