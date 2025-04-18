@@ -57,10 +57,10 @@ class PacmanGame:
         
         # Ghost movement timers
         self.ghost_move_timer = 0
-        self.ghost_move_delay = 0.3  # seconds between moves
+        self.ghost_move_delay = 0.2  # seconds between moves
         # Pacman movement timers
         self.pacman_move_timer = 0
-        self.pacman_move_delay = 0.2  # seconds between moves
+        self.pacman_move_delay = 0.18  # seconds between moves
 
         # Level completion
         self.level_complete = False
@@ -309,7 +309,7 @@ class PacmanGame:
             if ghost_color:
                 self.draw_path(self.current_path, ghost_color)
         # Draw paths for all active ghosts in Level 5
-        elif self.current_level == 5 and self.show_path:
+        elif self.current_level in [5, 6]:
             for ghost_color in ACTIVE_GHOSTS[self.current_level]:
                 color = globals()[ghost_color.upper()]
                 self.draw_path(self.ghost_paths[ghost_color], color, ghost_color)
@@ -370,7 +370,7 @@ class PacmanGame:
         """Update Pac-Man's position and animation."""
         # Update animation
         self.pacman_animation_time += self.pacman_animation_speed * dt
-    
+
         # In level 6, allow user control
         if self.current_level == 6:
             self.pacman_move_timer += dt
@@ -380,21 +380,24 @@ class PacmanGame:
             
                 keys = pygame.key.get_pressed()
                 new_pos = self.pacman_pos.copy()
-                new_direction = self.pacman_direction  # Keep track of new direction
+                new_direction = self.pacman_direction
             
-                # Prioritize the last pressed key by checking all keys
-                if keys[K_RIGHT]:
-                    new_direction = RIGHT
-                    new_pos[0] += 1
-                if keys[K_DOWN]:
-                    new_direction = DOWN
-                    new_pos[1] += 1
-                if keys[K_LEFT]:
-                    new_direction = LEFT
-                    new_pos[0] -= 1
-                if keys[K_UP]:
-                    new_direction = UP
-                    new_pos[1] -= 1
+                # Define possible directions in order of priority (last pressed key wins)
+                directions = [
+                    (K_RIGHT, RIGHT, (1, 0)),  # Move right: x += 1
+                    (K_DOWN, DOWN, (0, 1)),    # Move down: y += 1
+                    (K_LEFT, LEFT, (-1, 0)),   # Move left: x -= 1
+                    (K_UP, UP, (0, -1))        # Move up: y -= 1
+                ]
+            
+                # Check each direction in order
+                for key, direction, (dx, dy) in directions:
+                    if keys[key]:
+                        # Try this direction
+                        new_pos = [self.pacman_pos[0] + dx, self.pacman_pos[1] + dy]
+                        new_direction = direction
+                        # Stop checking other directions after finding the last pressed key
+                        break
             
                 # Check if the new position is valid (not a wall)
                 if is_valid_move(new_pos[0], new_pos[1]):
