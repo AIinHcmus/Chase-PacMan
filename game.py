@@ -60,7 +60,7 @@ class PacmanGame:
         self.ghost_move_delay = 0.2  # seconds between moves
         # Pacman movement timers
         self.pacman_move_timer = 0
-        self.pacman_move_delay = 0.18  # seconds between moves
+        self.pacman_move_delay = 0.15  # seconds between moves
 
         # Level completion
         self.level_complete = False
@@ -290,64 +290,63 @@ class PacmanGame:
     def draw_game(self):
         """Draw the game screen."""
         self.screen.fill(BLACK)
-        
+    
         # Draw maze
         self.draw_maze()
-        
+    
         # Draw path if enabled
-        if self.show_path and self.current_path:
-            ghost_color = None
-            if self.current_level == 1:
-                ghost_color = BLUE
-            elif self.current_level == 2:
-                ghost_color = PINK
-            elif self.current_level == 3:
-                ghost_color = ORANGE
-            elif self.current_level == 4:
-                ghost_color = RED
-
-            if ghost_color:
-                self.draw_path(self.current_path, ghost_color)
-        # Draw paths for all active ghosts in Level 5
-        elif self.current_level in [5, 6]:
-            for ghost_color in ACTIVE_GHOSTS[self.current_level]:
-                color = globals()[ghost_color.upper()]
-                self.draw_path(self.ghost_paths[ghost_color], color, ghost_color)
-        
+        if self.show_path:
+            if self.current_level in [1, 2, 3, 4] and self.current_path:
+                ghost_color = None
+                if self.current_level == 1:
+                    ghost_color = BLUE
+                elif self.current_level == 2:
+                    ghost_color = PINK
+                elif self.current_level == 3:
+                    ghost_color = ORANGE
+                elif self.current_level == 4:
+                    ghost_color = RED
+                if ghost_color:
+                    self.draw_path(self.current_path, ghost_color)
+            elif self.current_level in [5, 6]:
+                for ghost_color in ACTIVE_GHOSTS[self.current_level]:
+                    color = globals()[ghost_color.upper()]
+                    self.draw_path(self.ghost_paths[ghost_color], color, ghost_color)
+    
         # Draw Pac-Man
         if self.pacman_pos and (self.current_level == 6 or self.pacman_pos):
             self.draw_pacman(self.pacman_pos[0], self.pacman_pos[1])
-        
+    
         # Draw active ghosts based on current level
         for ghost_color in ACTIVE_GHOSTS[self.current_level]:
             if self.ghost_positions[ghost_color]:
                 color = globals()[ghost_color.upper()]
                 self.draw_ghost(self.ghost_positions[ghost_color][0], self.ghost_positions[ghost_color][1], color)
-        
+    
         # Draw level info
         level_text = self.font.render(f"Level {self.current_level}: {LEVEL_DESCRIPTIONS[self.current_level-1]}", True, WHITE)
         self.screen.blit(level_text, (10, 10))
-        
+    
         # Draw instructions
         if self.current_level == 6:
             instr_text = self.font.render("Use ARROW keys to move Pac-Man", True, WHITE)
             self.screen.blit(instr_text, (10, SCREEN_HEIGHT - 30))
-        
+    
         # Draw toggle options
         path_text = self.font.render(f"P: {'Hide' if self.show_path else 'Show'} Path", True, WHITE)
         self.screen.blit(path_text, (10, 40))
-        
+    
         stats_text = self.font.render(f"S: {'Hide' if self.show_stats else 'Show'} Stats", True, WHITE)
         self.screen.blit(stats_text, (10, 70))
-        
+    
         # Draw back button
         back_text = self.font.render("ESC: Back to Menu", True, WHITE)
         back_rect = back_text.get_rect(topright=(SCREEN_WIDTH - 10, 10))
         self.screen.blit(back_text, back_rect)
-        
+    
         # Draw stats if enabled
         self.draw_stats()
-        
+    
         # Draw level complete message if applicable
         if self.level_complete:
             # Create a semi-transparent overlay
@@ -355,12 +354,12 @@ class PacmanGame:
             overlay.set_alpha(150)
             overlay.fill(BLACK)
             self.screen.blit(overlay, (0, 0))
-            
+        
             # Draw level complete message
             complete_text = self.title_font.render("Level Complete!", True, YELLOW)
             complete_rect = complete_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 30))
             self.screen.blit(complete_text, complete_rect)
-            
+        
             # Draw continue message
             continue_text = self.font.render("Press ENTER to continue", True, WHITE)
             continue_rect = continue_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 30))
